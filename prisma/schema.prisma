@@ -1,0 +1,43 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../.prisma/client"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Project {
+  id        String    @id @default(uuid())
+  name      String
+  createdAt DateTime  @default(now())
+  drawings  Drawing[]
+}
+
+model Drawing {
+  id            String         @id @default(uuid())
+  projectId    String
+  filename     String
+  fileType     String // "pdf" or "dwg"
+  filePath     String
+  status       String         @default("pending") // "pending", "processing", "completed", "error"
+  createdAt    DateTime       @default(now())
+  project      Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  extractedData ExtractedData[]
+}
+
+model ExtractedData {
+  id           String   @id @default(uuid())
+  drawingId    String
+  materialType String?
+  dimensions   String?
+  quantity     Float?
+  annotations  String?
+  confidence   String?
+  rawData      String?  @default("{}") // JSON string for additional data
+  createdAt    DateTime @default(now())
+  drawing      Drawing  @relation(fields: [drawingId], references: [id], onDelete: Cascade)
+}
