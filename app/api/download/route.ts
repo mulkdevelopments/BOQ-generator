@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       fileBuffer = await readFile(normalizedPath)
     }
 
-    return new NextResponse(fileBuffer, {
+    return new NextResponse(new Uint8Array(fileBuffer), {
       headers: {
         'Content-Type': 'application/octet-stream',
         'Content-Disposition': `attachment; filename="${fileName}"`,
