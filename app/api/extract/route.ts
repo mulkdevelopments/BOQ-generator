@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get drawing from database
-    const drawing = await prisma.drawing.findUnique({
+    let drawing = await prisma.drawing.findUnique({
       where: { id: drawingId },
     })
 
@@ -42,6 +42,27 @@ export async function POST(request: NextRequest) {
         { error: 'Drawing not found' },
         { status: 404 }
       )
+    }
+
+    // Client upload: onUploadCompleted may run after the client gets the response. Wait for blob URL.
+    if (drawing.filePath === 'pending-client-upload') {
+      const maxWaitMs = 20000
+      const pollIntervalMs = 500
+      const deadline = Date.now() + maxWaitMs
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, pollIntervalMs))
+        const updated = await prisma.drawing.findUnique({ where: { id: drawingId } })
+        if (updated && updated.filePath !== 'pending-client-upload' && updated.filePath.startsWith('http')) {
+          drawing = updated
+          break
+        }
+      }
+      if (drawing.filePath === 'pending-client-upload') {
+        return NextResponse.json(
+          { error: 'Upload still processing. Please try extraction again in a few seconds.' },
+          { status: 503 }
+        )
+      }
     }
 
     // Update status to processing

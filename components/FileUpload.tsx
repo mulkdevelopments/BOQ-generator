@@ -2,6 +2,9 @@
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { upload as uploadToBlob } from '@vercel/blob/client'
+
+const SERVER_UPLOAD_LIMIT = 4.5 * 1024 * 1024 // 4.5MB - use client upload above this
 
 interface FileUploadProps {
   onUploadSuccess?: (drawingId: string, projectId: string) => void
@@ -53,33 +56,79 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
     setError(null)
     setUploadProgress(0)
 
+    const useClientUpload = file.size > SERVER_UPLOAD_LIMIT
+    const fileType = file.name.toLowerCase().endsWith('.dwg') ? 'dwg' : 'pdf'
+
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      if (projectName.trim()) {
-        formData.append('projectName', projectName.trim())
+      let drawingId: string
+      let projectId: string
+
+      if (useClientUpload) {
+        // Large file: client upload to Blob (no 4.5MB server limit)
+        const startRes = await fetch('/api/upload-start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ projectName: projectName.trim() || undefined }),
+        })
+        if (!startRes.ok) {
+          const data = await startRes.json().catch(() => ({}))
+          throw new Error(data.error || 'Could not start upload')
+        }
+        const startData = await startRes.json()
+        drawingId = startData.drawingId
+        projectId = startData.projectId
+
+        const blob = await uploadToBlob(file.name, file, {
+          access: 'public',
+          handleUploadUrl: '/api/upload-blob',
+          clientPayload: JSON.stringify({
+            drawingId,
+            projectId,
+            filename: file.name,
+            fileType,
+          }),
+          multipart: true,
+        })
+        const completeRes = await fetch('/api/upload-complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            drawingId,
+            blobUrl: blob.url,
+            filename: file.name,
+            fileType,
+          }),
+        })
+        if (!completeRes.ok) {
+          const data = await completeRes.json().catch(() => ({}))
+          throw new Error(data.error || 'Failed to complete upload')
+        }
+      } else {
+        // Small file: traditional server upload
+        const formData = new FormData()
+        formData.append('file', file)
+        if (projectName.trim()) {
+          formData.append('projectName', projectName.trim())
+        }
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        })
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({ error: 'Upload failed' }))
+          throw new Error(data.error || 'Upload failed')
+        }
+        const data = await response.json()
+        drawingId = data.drawing.id
+        projectId = data.drawing.projectId
       }
 
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      })
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({ error: 'Upload failed' }))
-        throw new Error(data.error || 'Upload failed')
-      }
-
-      const data = await response.json()
       setUploadProgress(100)
 
-      // Trigger extraction
       const extractResponse = await fetch('/api/extract', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ drawingId: data.drawing.id }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ drawingId }),
       })
 
       if (!extractResponse.ok) {
@@ -90,9 +139,9 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
       }
 
       if (onUploadSuccess) {
-        onUploadSuccess(data.drawing.id, data.drawing.projectId)
+        onUploadSuccess(drawingId, projectId)
       } else {
-        router.push(`/projects/${data.drawing.projectId}`)
+        router.push(`/projects/${projectId}`)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed')
