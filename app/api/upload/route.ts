@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { writeFile } from 'fs/promises'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
+import { put } from '@vercel/blob'
 import { prisma } from '@/lib/db'
 
-const MAX_FILE_SIZE = 500 * 1024 * 1024 // 500MB
-const ALLOWED_TYPES = ['application/pdf', 'application/acad', 'application/x-dwg', 'image/vnd.dwg']
+const MAX_FILE_SIZE = 500 * 1024 * 1024 // 500MB (local disk)
+const MAX_BLOB_SIZE = 4.5 * 1024 * 1024 // 4.5MB (Vercel Blob server upload limit)
 
 // Configure route for large file uploads
 export const runtime = 'nodejs'
@@ -28,8 +29,8 @@ export async function POST(request: NextRequest) {
     const fileType = file.type || ''
     const fileName = file.name.toLowerCase()
     const isPDF = fileName.endsWith('.pdf') || fileType === 'application/pdf'
-    const isDWG = fileName.endsWith('.dwg') || 
-                  fileType === 'application/acad' || 
+    const isDWG = fileName.endsWith('.dwg') ||
+                  fileType === 'application/acad' ||
                   fileType === 'application/x-dwg' ||
                   fileType === 'image/vnd.dwg'
 
@@ -40,10 +41,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate file size
-    if (file.size > MAX_FILE_SIZE) {
+    const useBlob = Boolean(process.env.BLOB_READ_WRITE_TOKEN)
+    const maxSize = useBlob ? MAX_BLOB_SIZE : MAX_FILE_SIZE
+    if (file.size > maxSize) {
       return NextResponse.json(
-        { error: `File size exceeds maximum of ${MAX_FILE_SIZE / 1024 / 1024}MB` },
+        {
+          error: useBlob
+            ? `File size exceeds Vercel Blob server limit (${MAX_BLOB_SIZE / 1024 / 1024}MB). Use a smaller file or client upload.`
+            : `File size exceeds maximum of ${MAX_FILE_SIZE / 1024 / 1024}MB`,
+        },
         { status: 400 }
       )
     }
@@ -53,25 +59,27 @@ export async function POST(request: NextRequest) {
     const fileExtension = isPDF ? '.pdf' : '.dwg'
     const fileNameOnDisk = `${fileId}${fileExtension}`
 
-    // Save file to uploads directory
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    const uploadsDir = join(process.cwd(), 'uploads')
-    const filePath = join(uploadsDir, fileNameOnDisk)
+    let storedPath: string
 
-    // Ensure uploads directory exists
-    const fs = await import('fs/promises')
-    try {
-      await fs.access(uploadsDir)
-    } catch {
-      await fs.mkdir(uploadsDir, { recursive: true })
-    }
-
-    // Write file with error handling
-    try {
+    if (useBlob) {
+      const blob = await put(fileNameOnDisk, buffer, {
+        access: 'public',
+        contentType: isPDF ? 'application/pdf' : 'application/octet-stream',
+      })
+      storedPath = blob.url
+    } else {
+      const uploadsDir = join(process.cwd(), 'uploads')
+      const filePath = join(uploadsDir, fileNameOnDisk)
+      const fs = await import('fs/promises')
+      try {
+        await fs.access(uploadsDir)
+      } catch {
+        await fs.mkdir(uploadsDir, { recursive: true })
+      }
       await writeFile(filePath, buffer)
-    } catch (writeError) {
-      throw new Error(`Failed to save file: ${writeError instanceof Error ? writeError.message : 'Unknown error'}`)
+      storedPath = filePath
     }
 
     // Create or get project
@@ -84,20 +92,19 @@ export async function POST(request: NextRequest) {
           },
         })
       } else {
-        // Create default project with timestamp
         project = await prisma.project.create({
           data: {
             name: `Project ${new Date().toLocaleString()}`,
           },
         })
-      }
     } catch (dbError) {
-      // Clean up uploaded file if database operation fails
-      try {
-        const fs = await import('fs/promises')
-        await fs.unlink(filePath)
-      } catch (unlinkError) {
-        console.error('Failed to clean up file after DB error:', unlinkError)
+      if (!useBlob && storedPath) {
+        try {
+          const fs = await import('fs/promises')
+          await fs.unlink(storedPath)
+        } catch (unlinkError) {
+          console.error('Failed to clean up file after DB error:', unlinkError)
+        }
       }
       throw new Error(`Failed to create project: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`)
     }
@@ -110,17 +117,18 @@ export async function POST(request: NextRequest) {
           projectId: project.id,
           filename: file.name,
           fileType: isPDF ? 'pdf' : 'dwg',
-          filePath: filePath,
+          filePath: storedPath,
           status: 'pending',
         },
       })
     } catch (dbError) {
-      // Clean up uploaded file if database operation fails
-      try {
-        const fs = await import('fs/promises')
-        await fs.unlink(filePath)
-      } catch (unlinkError) {
-        console.error('Failed to clean up file after DB error:', unlinkError)
+      if (!useBlob && storedPath) {
+        try {
+          const fs = await import('fs/promises')
+          await fs.unlink(storedPath)
+        } catch (unlinkError) {
+          console.error('Failed to clean up file after DB error:', unlinkError)
+        }
       }
       throw new Error(`Failed to create drawing record: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`)
     }

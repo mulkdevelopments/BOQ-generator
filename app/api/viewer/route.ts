@@ -12,20 +12,26 @@ export async function GET(request: NextRequest) {
       return new NextResponse('Missing file or type parameter', { status: 400 })
     }
 
-    // Security: Ensure file is in uploads directory
-    const normalizedPath = join(process.cwd(), 'uploads', filePath.split('/').pop() || '')
-    
-    if (type === 'pdf') {
-      const fileBuffer = await readFile(normalizedPath)
-      return new NextResponse(fileBuffer, {
-        headers: {
-          'Content-Type': 'application/pdf',
-          'Content-Disposition': 'inline',
-        },
-      })
+    if (type !== 'pdf') {
+      return new NextResponse('Unsupported file type', { status: 400 })
     }
 
-    return new NextResponse('Unsupported file type', { status: 400 })
+    let fileBuffer: Buffer
+    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+      const res = await fetch(filePath)
+      if (!res.ok) throw new Error('Blob fetch failed')
+      fileBuffer = Buffer.from(await res.arrayBuffer())
+    } else {
+      const normalizedPath = join(process.cwd(), 'uploads', filePath.split('/').pop() || '')
+      fileBuffer = await readFile(normalizedPath)
+    }
+
+    return new NextResponse(fileBuffer, {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'inline',
+      },
+    })
   } catch (error) {
     console.error('Viewer error:', error)
     return new NextResponse('File not found', { status: 404 })

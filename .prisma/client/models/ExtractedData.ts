@@ -532,6 +532,7 @@ export type ExtractedDataCreateOrConnectWithoutDrawingInput = {
 
 export type ExtractedDataCreateManyDrawingInputEnvelope = {
   data: Prisma.ExtractedDataCreateManyDrawingInput | Prisma.ExtractedDataCreateManyDrawingInput[]
+  skipDuplicates?: boolean
 }
 
 export type ExtractedDataUpsertWithWhereUniqueWithoutDrawingInput = {
@@ -1350,6 +1351,7 @@ export type ExtractedDataCreateManyArgs<ExtArgs extends runtime.Types.Extensions
    * The data used to create many ExtractedData.
    */
   data: Prisma.ExtractedDataCreateManyInput | Prisma.ExtractedDataCreateManyInput[]
+  skipDuplicates?: boolean
 }
 
 /**
@@ -1368,6 +1370,7 @@ export type ExtractedDataCreateManyAndReturnArgs<ExtArgs extends runtime.Types.E
    * The data used to create many ExtractedData.
    */
   data: Prisma.ExtractedDataCreateManyInput | Prisma.ExtractedDataCreateManyInput[]
+  skipDuplicates?: boolean
   /**
    * Choose, which related nodes to fetch as well
    */

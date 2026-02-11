@@ -456,6 +456,7 @@ export type DrawingCreateOrConnectWithoutProjectInput = {
 
 export type DrawingCreateManyProjectInputEnvelope = {
   data: Prisma.DrawingCreateManyProjectInput | Prisma.DrawingCreateManyProjectInput[]
+  skipDuplicates?: boolean
 }
 
 export type DrawingUpsertWithWhereUniqueWithoutProjectInput = {
@@ -1345,6 +1346,7 @@ export type DrawingCreateManyArgs<ExtArgs extends runtime.Types.Extensions.Inter
    * The data used to create many Drawings.
    */
   data: Prisma.DrawingCreateManyInput | Prisma.DrawingCreateManyInput[]
+  skipDuplicates?: boolean
 }
 
 /**
@@ -1363,6 +1365,7 @@ export type DrawingCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensi
    * The data used to create many Drawings.
    */
   data: Prisma.DrawingCreateManyInput | Prisma.DrawingCreateManyInput[]
+  skipDuplicates?: boolean
   /**
    * Choose, which related nodes to fetch as well
    */

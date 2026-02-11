@@ -18,7 +18,8 @@ A SAAS tool that helps facade contractors automatically extract material informa
 
 - **Frontend**: Next.js 14+ (App Router), React, TypeScript, Tailwind CSS
 - **Backend**: Next.js API Routes
-- **Database**: SQLite (MVP) / PostgreSQL (production-ready)
+- **Database**: PostgreSQL (Vercel Postgres or any Postgres)
+- **File storage**: Vercel Blob (on Vercel) or local `uploads/` (local dev)
 - **ORM**: Prisma
 - **PDF Processing**: pdf-parse
 - **DWG Processing**: LibreDWG (free, built-in) or Autodesk Forge API / Python ezdxf service
@@ -38,8 +39,9 @@ A SAAS tool that helps facade contractors automatically extract material informa
 npm install
 ```
 
-3. Set up the database:
+3. Set up the database (PostgreSQL required; use a local Postgres or a hosted URL in `.env`):
 ```bash
+# Set DATABASE_URL in .env, then:
 npx prisma migrate dev
 ```
 
@@ -101,13 +103,47 @@ The application supports multiple methods for processing DWG files:
 Create a `.env` file in the root directory:
 
 ```env
-DATABASE_URL="file:./dev.db"
+# Required: PostgreSQL connection string (local or Vercel Postgres)
+DATABASE_URL="postgresql://user:password@host:5432/dbname"
+
+# Optional: Vercel Blob (on Vercel this is set automatically when you add Blob storage)
+BLOB_READ_WRITE_TOKEN=vercel_blob_...
 
 # Optional: For DWG processing
 FORGE_API_KEY=your_forge_api_key
 FORGE_API_SECRET=your_forge_api_secret
 DWG_PYTHON_SERVICE_URL=http://localhost:8000
 ```
+
+## Deploying to Vercel
+
+### 1. Database (Vercel Postgres)
+
+1. In the [Vercel Dashboard](https://vercel.com/dashboard), open your project → **Storage**.
+2. Click **Create Database** → choose **Postgres** (Vercel Postgres).
+3. Create the database and **connect it to your project**. Vercel will add `POSTGRES_URL` (and often `DATABASE_URL`) to your project environment.
+4. If Prisma expects `DATABASE_URL`, set it in **Project → Settings → Environment Variables**: either copy the value from `POSTGRES_URL` or add a variable `DATABASE_URL` with the same connection string (e.g. `postgres://...`).
+
+**Migrations on Vercel:** You do **not** run `npx prisma migrate dev` on Vercel. That command is for local development. On Vercel, migrations run automatically during **build**: the `build` script runs `prisma migrate deploy`, which applies any pending migrations to the production database. So:
+
+- **Locally:** Run `npx prisma migrate dev` to create and apply migrations.
+- **On Vercel:** Push your code; the build runs `prisma generate && prisma migrate deploy && next build`, so the production DB is migrated before the app is built.
+
+### 2. Blob storage (Vercel Blob)
+
+1. In the same project, go to **Storage** → **Create Database** → **Blob**.
+2. Create the Blob store and connect it to your project. Vercel adds `BLOB_READ_WRITE_TOKEN` automatically.
+3. No code changes needed: the app uses Blob when `BLOB_READ_WRITE_TOKEN` is set (uploads go to Blob and `filePath` in the DB stores the blob URL).
+
+**Note:** Server-side uploads to Vercel Blob are limited to **4.5 MB** per file. Larger files would require client-side uploads (e.g. Vercel’s client upload API).
+
+### 3. Deploy
+
+Push to your connected Git branch. Vercel will:
+
+1. Install dependencies (`npm install` → runs `postinstall` → `prisma generate`).
+2. Run `prisma migrate deploy` (as part of `build`) to apply migrations.
+3. Run `next build` and deploy.
 
 ## Usage
 

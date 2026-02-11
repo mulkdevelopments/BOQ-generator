@@ -1,8 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { join } from 'path'
+import { tmpdir } from 'os'
+import { writeFile, unlink } from 'fs/promises'
 import { prisma } from '@/lib/db'
 import { processPDF } from '@/lib/pdf-extractor'
 import { processDWG } from '@/lib/dwg-processor'
 import { ExtractedMaterial } from '@/types'
+
+/** Resolve file path: if URL, download to temp dir and return local path. */
+async function resolveFilePath(filePath: string, drawingId: string, fileType: string): Promise<string> {
+  if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+    const res = await fetch(filePath)
+    if (!res.ok) throw new Error(`Blob fetch failed: ${res.status}`)
+    const buffer = Buffer.from(await res.arrayBuffer())
+    const ext = fileType === 'pdf' ? '.pdf' : '.dwg'
+    const tmpPath = join(tmpdir(), `drawing-${drawingId}${ext}`)
+    await writeFile(tmpPath, buffer)
+    return tmpPath
+  }
+  return filePath
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,25 +50,29 @@ export async function POST(request: NextRequest) {
       data: { status: 'processing' },
     })
 
+    let localPath: string | null = null
+
     try {
       let materials: ExtractedMaterial[] = []
 
-      // Check if file exists
+      const filePath = await resolveFilePath(drawing.filePath, drawing.id, drawing.fileType)
+      localPath = (drawing.filePath.startsWith('http://') || drawing.filePath.startsWith('https://')) ? filePath : null
+
       const fs = await import('fs/promises')
       try {
-        await fs.access(drawing.filePath)
+        await fs.access(filePath)
       } catch (accessError) {
         throw new Error(`File not found at path: ${drawing.filePath}`)
       }
 
       // Process based on file type
       if (drawing.fileType === 'pdf') {
-        console.log(`Processing PDF: ${drawing.filePath}`)
-        materials = await processPDF(drawing.filePath)
+        console.log(`Processing PDF: ${filePath}`)
+        materials = await processPDF(filePath)
         console.log(`Extracted ${materials.length} materials from PDF`)
       } else if (drawing.fileType === 'dwg') {
-        console.log(`Processing DWG: ${drawing.filePath}`)
-        materials = await processDWG(drawing.filePath)
+        console.log(`Processing DWG: ${filePath}`)
+        materials = await processDWG(filePath)
         console.log(`Extracted ${materials.length} materials from DWG`)
       } else {
         throw new Error(`Unsupported file type: ${drawing.fileType}`)
@@ -124,6 +145,14 @@ export async function POST(request: NextRequest) {
       })
 
       throw error
+    } finally {
+      if (localPath) {
+        try {
+          await unlink(localPath)
+        } catch (e) {
+          console.warn('Failed to clean up temp file:', localPath, e)
+        }
+      }
     }
   } catch (error) {
     console.error('Extraction error:', error)

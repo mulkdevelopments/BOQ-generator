@@ -42,7 +42,8 @@ next-env.d.ts
 
 /lib/generated/prisma
 
-# uploads
+# uploads and temp (extract downloads blob to tmp)
 /uploads
+/tmp
 *.db
 *.db-journal

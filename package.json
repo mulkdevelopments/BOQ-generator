@@ -4,15 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@mlightcad/libredwg-web": "^0.6.6",
-    "@prisma/adapter-better-sqlite3": "^7.3.0",
     "@prisma/client": "^7.3.0",
-    "better-sqlite3": "^12.6.2",
+    "@vercel/blob": "^0.23.4",
     "next": "16.1.6",
     "pdf-parse": "^2.4.5",
     "react": "19.2.3",
@@ -22,7 +22,6 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19",

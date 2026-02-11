@@ -19,8 +19,8 @@ const config: runtime.GetPrismaClientConfig = {
   "previewFeatures": [],
   "clientVersion": "7.3.0",
   "engineVersion": "9d6ad21cbbceab97458517b147a6a09ff43aa735",
-  "activeProvider": "sqlite",
-  "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\ngenerator client {\n  provider = \"prisma-client\"\n  output   = \"../.prisma/client\"\n}\n\ndatasource db {\n  provider = \"sqlite\"\n}\n\nmodel Project {\n  id        String    @id @default(uuid())\n  name      String\n  createdAt DateTime  @default(now())\n  drawings  Drawing[]\n}\n\nmodel Drawing {\n  id            String          @id @default(uuid())\n  projectId     String\n  filename      String\n  fileType      String // \"pdf\" or \"dwg\"\n  filePath      String\n  status        String          @default(\"pending\") // \"pending\", \"processing\", \"completed\", \"error\"\n  createdAt     DateTime        @default(now())\n  project       Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)\n  extractedData ExtractedData[]\n}\n\nmodel ExtractedData {\n  id           String   @id @default(uuid())\n  drawingId    String\n  materialType String?\n  dimensions   String?\n  quantity     Float?\n  annotations  String?\n  confidence   String?\n  rawData      String?  @default(\"{}\") // JSON string for additional data\n  createdAt    DateTime @default(now())\n  drawing      Drawing  @relation(fields: [drawingId], references: [id], onDelete: Cascade)\n}\n",
+  "activeProvider": "postgresql",
+  "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\ngenerator client {\n  provider = \"prisma-client\"\n  output   = \"../.prisma/client\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n}\n\nmodel Project {\n  id        String    @id @default(uuid())\n  name      String\n  createdAt DateTime  @default(now())\n  drawings  Drawing[]\n}\n\nmodel Drawing {\n  id            String          @id @default(uuid())\n  projectId     String\n  filename      String\n  fileType      String // \"pdf\" or \"dwg\"\n  filePath      String\n  status        String          @default(\"pending\") // \"pending\", \"processing\", \"completed\", \"error\"\n  createdAt     DateTime        @default(now())\n  project       Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)\n  extractedData ExtractedData[]\n}\n\nmodel ExtractedData {\n  id           String   @id @default(uuid())\n  drawingId    String\n  materialType String?\n  dimensions   String?\n  quantity     Float?\n  annotations  String?\n  confidence   String?\n  rawData      String?  @default(\"{}\") // JSON string for additional data\n  createdAt    DateTime @default(now())\n  drawing      Drawing  @relation(fields: [drawingId], references: [id], onDelete: Cascade)\n}\n",
   "runtimeDataModel": {
     "models": {},
     "enums": {},
@@ -37,10 +37,10 @@ async function decodeBase64AsWasm(wasmBase64: string): Promise<WebAssembly.Modul
 }
 
 config.compilerWasm = {
-  getRuntime: async () => await import("@prisma/client/runtime/query_compiler_fast_bg.sqlite.mjs"),
+  getRuntime: async () => await import("@prisma/client/runtime/query_compiler_fast_bg.postgresql.mjs"),
 
   getQueryCompilerWasmModule: async () => {
-    const { wasm } = await import("@prisma/client/runtime/query_compiler_fast_bg.sqlite.wasm-base64.mjs")
+    const { wasm } = await import("@prisma/client/runtime/query_compiler_fast_bg.postgresql.wasm-base64.mjs")
     return await decodeBase64AsWasm(wasm)
   },
 

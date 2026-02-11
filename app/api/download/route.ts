@@ -11,12 +11,18 @@ export async function GET(request: NextRequest) {
       return new NextResponse('Missing file parameter', { status: 400 })
     }
 
-    // Security: Ensure file is in uploads directory
-    const normalizedPath = join(process.cwd(), 'uploads', filePath.split('/').pop() || '')
     const fileName = filePath.split('/').pop() || 'download'
-    
-    const fileBuffer = await readFile(normalizedPath)
-    
+    let fileBuffer: Buffer
+
+    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+      const res = await fetch(filePath)
+      if (!res.ok) throw new Error('Blob fetch failed')
+      fileBuffer = Buffer.from(await res.arrayBuffer())
+    } else {
+      const normalizedPath = join(process.cwd(), 'uploads', filePath.split('/').pop() || '')
+      fileBuffer = await readFile(normalizedPath)
+    }
+
     return new NextResponse(fileBuffer, {
       headers: {
         'Content-Type': 'application/octet-stream',
