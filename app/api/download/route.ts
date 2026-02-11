@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { readFile } from 'fs/promises'
-import { join } from 'path'
+import { join, basename } from 'path'
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       return new NextResponse('Missing file parameter', { status: 400 })
     }
 
-    const fileName = filePath.split('/').pop() || 'download'
+    const fileName = filePath.startsWith('http') ? basename(new URL(filePath).pathname) || 'download' : basename(filePath) || 'download'
     let fileBuffer: Buffer
 
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       if (!res.ok) throw new Error('Blob fetch failed')
       fileBuffer = Buffer.from(await res.arrayBuffer())
     } else {
-      const normalizedPath = join(process.cwd(), 'uploads', filePath.split('/').pop() || '')
+      const normalizedPath = join(process.cwd(), 'uploads', basename(filePath))
       fileBuffer = await readFile(normalizedPath)
     }
 

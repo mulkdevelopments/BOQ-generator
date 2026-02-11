@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     } else {
       const uploadsDir = join(process.cwd(), 'uploads')
       const filePath = join(uploadsDir, fileNameOnDisk)
-      const fs = await import('fs/promises')
+      const fs = await import('fs/promises');
       try {
         await fs.access(uploadsDir)
       } catch {
@@ -90,20 +90,21 @@ export async function POST(request: NextRequest) {
           data: {
             name: projectName.trim(),
           },
-        })
+        });
       } else {
         project = await prisma.project.create({
           data: {
             name: `Project ${new Date().toLocaleString()}`,
           },
-        })
+        });
+      }
     } catch (dbError) {
       if (!useBlob && storedPath) {
         try {
-          const fs = await import('fs/promises')
-          await fs.unlink(storedPath)
+          const fs = await import('fs/promises');
+          await fs.unlink(storedPath);
         } catch (unlinkError) {
-          console.error('Failed to clean up file after DB error:', unlinkError)
+          console.error('Failed to clean up file after DB error:', unlinkError);
         }
       }
       throw new Error(`Failed to create project: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`)
@@ -120,14 +121,14 @@ export async function POST(request: NextRequest) {
           filePath: storedPath,
           status: 'pending',
         },
-      })
+      });
     } catch (dbError) {
       if (!useBlob && storedPath) {
         try {
-          const fs = await import('fs/promises')
-          await fs.unlink(storedPath)
+          const fs = await import('fs/promises');
+          await fs.unlink(storedPath);
         } catch (unlinkError) {
-          console.error('Failed to clean up file after DB error:', unlinkError)
+          console.error('Failed to clean up file after DB error:', unlinkError);
         }
       }
       throw new Error(`Failed to create drawing record: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`)
@@ -143,12 +144,12 @@ export async function POST(request: NextRequest) {
         projectId: project.id,
         projectName: project.name,
       },
-    })
+    });
   } catch (error) {
-    console.error('Upload error:', error)
+    console.error('Upload error:', error);
     return NextResponse.json(
       { error: 'Failed to upload file', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
-    )
+    );
   }
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { readFile } from 'fs/promises'
-import { join } from 'path'
+import { join, basename } from 'path'
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,7 +22,8 @@ export async function GET(request: NextRequest) {
       if (!res.ok) throw new Error('Blob fetch failed')
       fileBuffer = Buffer.from(await res.arrayBuffer())
     } else {
-      const normalizedPath = join(process.cwd(), 'uploads', filePath.split('/').pop() || '')
+      const fileName = basename(filePath)
+      const normalizedPath = join(process.cwd(), 'uploads', fileName)
       fileBuffer = await readFile(normalizedPath)
     }
 
