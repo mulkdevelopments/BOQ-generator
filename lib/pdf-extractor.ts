@@ -1,3 +1,4 @@
+import './pdf-polyfill'
 import fs from 'fs/promises'
 import { parseMaterialData } from './material-parser'
 import { deduplicateMaterials } from './deduplicate-materials'
