@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const file = formData.get('file') as File | null
     const projectName = formData.get('projectName') as string | null
+    const existingProjectId = formData.get('projectId') as string | null
 
     if (!file) {
       return NextResponse.json(
@@ -85,7 +86,21 @@ export async function POST(request: NextRequest) {
     // Create or get project
     let project
     try {
-      if (projectName && projectName.trim()) {
+      if (existingProjectId && existingProjectId.trim()) {
+        const existing = await prisma.project.findUnique({
+          where: { id: existingProjectId.trim() },
+        });
+        if (!existing) {
+          if (!useBlob && storedPath) {
+            try {
+              const fs = await import('fs/promises');
+              await fs.unlink(storedPath);
+            } catch {}
+            }
+          return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+        }
+        project = existing;
+      } else if (projectName && projectName.trim()) {
         project = await prisma.project.create({
           data: {
             name: projectName.trim(),

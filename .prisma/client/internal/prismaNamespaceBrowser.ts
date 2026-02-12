@@ -53,7 +53,8 @@ export const AnyNull = runtime.AnyNull
 export const ModelName = {
   Project: 'Project',
   Drawing: 'Drawing',
-  ExtractedData: 'ExtractedData'
+  ExtractedData: 'ExtractedData',
+  MaterialRate: 'MaterialRate'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -75,6 +76,9 @@ export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof
 export const ProjectScalarFieldEnum = {
   id: 'id',
   name: 'name',
+  client: 'client',
+  consultant: 'consultant',
+  contractor: 'contractor',
   createdAt: 'createdAt'
 } as const
 
@@ -107,6 +111,19 @@ export const ExtractedDataScalarFieldEnum = {
 } as const
 
 export type ExtractedDataScalarFieldEnum = (typeof ExtractedDataScalarFieldEnum)[keyof typeof ExtractedDataScalarFieldEnum]
+
+
+export const MaterialRateScalarFieldEnum = {
+  id: 'id',
+  materialType: 'materialType',
+  unit: 'unit',
+  rate: 'rate',
+  currency: 'currency',
+  source: 'source',
+  updatedAt: 'updatedAt'
+} as const
+
+export type MaterialRateScalarFieldEnum = (typeof MaterialRateScalarFieldEnum)[keyof typeof MaterialRateScalarFieldEnum]
 
 
 export const SortOrder = {

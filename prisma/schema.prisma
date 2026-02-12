@@ -11,10 +11,13 @@ datasource db {
 }
 
 model Project {
-  id        String    @id @default(uuid())
-  name      String
-  createdAt DateTime  @default(now())
-  drawings  Drawing[]
+  id          String    @id @default(uuid())
+  name        String
+  client      String?
+  consultant  String?
+  contractor  String?
+  createdAt   DateTime  @default(now())
+  drawings    Drawing[]
 }
 
 model Drawing {
@@ -40,4 +43,14 @@ model ExtractedData {
   rawData      String?  @default("{}") // JSON string for additional data
   createdAt    DateTime @default(now())
   drawing      Drawing  @relation(fields: [drawingId], references: [id], onDelete: Cascade)
+}
+
+model MaterialRate {
+  id           String   @id @default(uuid())
+  materialType String
+  unit         String?
+  rate         Float?
+  currency     String?
+  source       String?  // e.g. 'manual', 'default-table', 'api:<provider>'
+  updatedAt    DateTime @default(now())
 }

@@ -16,16 +16,33 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}))
     const projectName = typeof body.projectName === 'string' ? body.projectName.trim() : ''
+    const existingProjectId = typeof body.projectId === 'string' ? body.projectId.trim() : undefined
 
-    const project = await prisma.project.create({
-      data: {
-        name: projectName || `Project ${new Date().toLocaleString()}`,
-      },
-    })
+    let projectId: string
+    let projectNameOut: string
+
+    if (existingProjectId) {
+      const project = await prisma.project.findUnique({
+        where: { id: existingProjectId },
+      })
+      if (!project) {
+        return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+      }
+      projectId = project.id
+      projectNameOut = project.name
+    } else {
+      const project = await prisma.project.create({
+        data: {
+          name: projectName || `Project ${new Date().toLocaleString()}`,
+        },
+      })
+      projectId = project.id
+      projectNameOut = project.name
+    }
 
     const drawing = await prisma.drawing.create({
       data: {
-        projectId: project.id,
+        projectId,
         filename: 'pending',
         fileType: 'pdf',
         filePath: 'pending-client-upload',
@@ -35,8 +52,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       drawingId: drawing.id,
-      projectId: project.id,
-      projectName: project.name,
+      projectId,
+      projectName: projectNameOut,
     })
   } catch (error) {
     console.error('Upload start error:', error)

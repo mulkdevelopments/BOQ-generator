@@ -1,9 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import DrawingViewer from '@/components/DrawingViewer'
-import ExtractionResults from '@/components/ExtractionResults'
+import FileUpload from '@/components/FileUpload'
+import ScopeOfWorkBill from '@/components/ScopeOfWorkBill'
+import ProjectAssistant from '@/components/ProjectAssistant'
+import ProjectRates from '@/components/ProjectRates'
 import { ExtractedMaterial } from '@/types'
 
 interface Drawing {
@@ -27,6 +30,9 @@ interface Drawing {
 interface Project {
   id: string
   name: string
+  client?: string | null
+  consultant?: string | null
+  contractor?: string | null
   createdAt: string
   drawings: Drawing[]
 }
@@ -39,6 +45,63 @@ export default function ProjectPage() {
   const [selectedDrawing, setSelectedDrawing] = useState<Drawing | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [rightTab, setRightTab] = useState<'viewer' | 'ai' | 'rates'>('viewer')
+
+  // Adjustable layout widths (desktop)
+  const [leftWidth, setLeftWidth] = useState(260) // px
+  const [rightWidth, setRightWidth] = useState(440) // px
+  const dragState = useRef<{
+    side: 'left' | 'right' | null
+    startX: number
+    startLeft: number
+    startRight: number
+  }>({ side: null, startX: 0, startLeft: 260, startRight: 440 })
+
+  const beginDrag = useCallback((side: 'left' | 'right') => {
+    if (typeof window === 'undefined') return
+    dragState.current = {
+      side,
+      startX: window.event instanceof MouseEvent ? window.event.clientX : 0,
+      startLeft: leftWidth,
+      startRight: rightWidth,
+    }
+    document.body.style.userSelect = 'none'
+  }, [leftWidth, rightWidth])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const handleMove = (e: MouseEvent) => {
+      const { side, startX, startLeft, startRight } = dragState.current
+      if (!side) return
+
+      const delta = e.clientX - startX
+      const minSidebar = 180
+      const minRight = 320
+
+      if (side === 'left') {
+        const next = Math.max(minSidebar, startLeft + delta)
+        setLeftWidth(next)
+      } else if (side === 'right') {
+        const next = Math.max(minRight, startRight - delta)
+        setRightWidth(next)
+      }
+    }
+
+    const handleUp = () => {
+      if (dragState.current.side) {
+        dragState.current.side = null
+        document.body.style.userSelect = ''
+      }
+    }
+
+    window.addEventListener('mousemove', handleMove)
+    window.addEventListener('mouseup', handleUp)
+    return () => {
+      window.removeEventListener('mousemove', handleMove)
+      window.removeEventListener('mouseup', handleUp)
+    }
+  }, [])
 
   useEffect(() => {
     if (projectId) {
@@ -73,6 +136,7 @@ export default function ProjectPage() {
 
   const convertExtractedDataToMaterials = (extractedData: Drawing['extractedData']): ExtractedMaterial[] => {
     return extractedData.map(data => ({
+      id: data.id,
       materialType: data.materialType || undefined,
       dimensions: data.dimensions || undefined,
       quantity: data.quantity ?? undefined,
@@ -84,7 +148,7 @@ export default function ProjectPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="h-screen bg-gray-50 flex items-center justify-center overflow-hidden">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
           <p className="text-gray-600">Loading project...</p>
@@ -95,7 +159,7 @@ export default function ProjectPage() {
 
   if (error || !project) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="h-screen bg-gray-50 flex items-center justify-center overflow-hidden">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error || 'Project not found'}</p>
           <button
@@ -114,118 +178,196 @@ export default function ProjectPage() {
   )
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6">
+    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
+      {/* Header */}
+      <header className="shrink-0 border-b border-gray-200 bg-white px-4 py-3">
+        <div className="flex items-center gap-4">
           <button
             onClick={() => router.push('/')}
-            className="text-blue-600 hover:text-blue-700 mb-4 flex items-center gap-2"
+            className="text-blue-600 hover:text-blue-700 flex items-center gap-2 shrink-0"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Back to Projects
+            Back
           </button>
-          <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
-          <p className="text-gray-600 mt-1">
-            Created {new Date(project.createdAt).toLocaleString()}
+          <h1 className="text-xl font-bold text-gray-900 truncate">{project.name}</h1>
+          <p className="text-sm text-gray-500 hidden sm:inline">
+            {project.drawings.length} file(s) · {new Date(project.createdAt).toLocaleString()}
           </p>
         </div>
+      </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Drawings List */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Drawings</h2>
-              <div className="space-y-2">
-                {project.drawings.map((drawing) => (
-                  <button
-                    key={drawing.id}
-                    onClick={() => setSelectedDrawing(drawing)}
+      {/* Three-column layout: sidebar (files) | center (bill) | right (viewer) */}
+      <div className="flex-1 flex min-h-0 flex-col lg:flex-row">
+        {/* Left: Files sidebar */}
+        <aside
+          className="shrink-0 border-b lg:border-b-0 lg:border-r border-gray-200 bg-white flex flex-col overflow-hidden max-h-48 lg:max-h-none"
+          style={{ width: leftWidth }}
+        >
+          <div className="p-3 border-b border-gray-100">
+            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Files</h2>
+          </div>
+          <nav className="flex-1 overflow-y-auto p-2 min-h-0">
+            {project.drawings.map((drawing) => (
+              <button
+                key={drawing.id}
+                onClick={() => setSelectedDrawing(drawing)}
+                className={`
+                  w-full text-left p-2.5 rounded-lg transition-colors mb-1
+                  ${
+                    selectedDrawing?.id === drawing.id
+                      ? 'bg-blue-50 border border-blue-200 text-blue-900'
+                      : 'border border-transparent hover:bg-gray-50 text-gray-700'
+                  }
+                `}
+              >
+                <p className="text-sm font-medium truncate" title={drawing.filename}>
+                  {drawing.filename}
+                </p>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-xs text-gray-500">{drawing.fileType.toUpperCase()}</span>
+                  <span
                     className={`
-                      w-full text-left p-3 rounded-lg border transition-colors
+                      shrink-0 w-2 h-2 rounded-full
                       ${
-                        selectedDrawing?.id === drawing.id
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:bg-gray-50'
+                        drawing.status === 'completed'
+                          ? 'bg-green-500'
+                          : drawing.status === 'processing'
+                          ? 'bg-amber-500'
+                          : drawing.status === 'error'
+                          ? 'bg-red-500'
+                          : 'bg-gray-400'
                       }
                     `}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {drawing.filename}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {drawing.fileType.toUpperCase()} • {drawing.extractedData.length} materials
-                        </p>
-                      </div>
-                      <div className="ml-2">
-                        <span
-                          className={`
-                            px-2 py-1 text-xs rounded-full
-                            ${
-                              drawing.status === 'completed'
-                                ? 'bg-green-100 text-green-800'
-                                : drawing.status === 'processing'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : drawing.status === 'error'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-gray-100 text-gray-800'
-                            }
-                          `}
-                        >
-                          {drawing.status}
-                        </span>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
+                    title={drawing.status}
+                  />
+                </div>
+              </button>
+            ))}
+            <div className="mt-2 pt-2 border-t border-gray-100">
+              <FileUpload
+                existingProjectId={projectId}
+                existingFileNames={project.drawings.map((d) => d.filename)}
+                compact
+                onUploadSuccess={() => fetchProject()}
+              />
+            </div>
+          </nav>
+        </aside>
+
+        {/* Resizer between sidebar and bill (desktop only) */}
+        <div
+          className="hidden lg:block w-1 cursor-col-resize bg-gray-200 hover:bg-gray-300 shrink-0"
+          onMouseDown={() => beginDrag('left')}
+        />
+
+        {/* Center: Bill (scope-of-work style BOQ) */}
+        <main className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden p-4 lg:p-6">
+          <div className="flex-1 bill-scroll overflow-y-auto">
+            <div className="max-w-5xl mx-auto">
+              <ScopeOfWorkBill
+                projectName={project.name}
+                client={project.client ?? ''}
+                consultant={project.consultant ?? ''}
+                contractor={project.contractor ?? ''}
+                materials={allMaterials}
+                projectId={projectId}
+                onSaveSuccess={fetchProject}
+              />
             </div>
           </div>
+        </main>
 
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {selectedDrawing && (
-              <>
-                <div className="bg-white rounded-lg shadow-sm p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                    Drawing: {selectedDrawing.filename}
-                  </h2>
-                  <DrawingViewer
-                    filePath={selectedDrawing.filePath}
-                    fileType={selectedDrawing.fileType}
-                    filename={selectedDrawing.filename}
-                  />
-                </div>
+        {/* Resizer between bill and viewer (desktop only) */}
+        <div
+          className="hidden lg:block w-1 cursor-col-resize bg-gray-200 hover:bg-gray-300 shrink-0"
+          onMouseDown={() => beginDrag('right')}
+        />
 
-                <div className="bg-white rounded-lg shadow-sm p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                    Extracted Materials
-                  </h2>
-                  <ExtractionResults
-                    materials={convertExtractedDataToMaterials(selectedDrawing.extractedData)}
-                    drawingId={selectedDrawing.id}
-                    projectId={projectId}
-                    status={selectedDrawing.status}
-                  />
-                </div>
-              </>
-            )}
-
-            {/* Combined BOM View */}
-            {allMaterials.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                  Combined BOM/BOQ
-                </h2>
-                <ExtractionResults materials={allMaterials} projectId={projectId} />
+        {/* Right: Viewer / AI / Rates */}
+        <section
+          className="w-full shrink-0 border-t lg:border-t-0 lg:border-l border-gray-200 bg-white flex flex-col overflow-hidden min-h-[360px] lg:min-h-0"
+          style={{ width: rightWidth }}
+        >
+          <div className="px-3 pt-3 pb-2 border-b border-gray-100 shrink-0">
+            <div className="flex items-center justify-between gap-2">
+              <div className="inline-flex items-center gap-1 rounded-full bg-gray-100 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setRightTab('viewer')}
+                  className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                    rightTab === 'viewer'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Viewer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRightTab('ai')}
+                  className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                    rightTab === 'ai'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  AI
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRightTab('rates')}
+                  className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                    rightTab === 'rates'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Rates
+                </button>
               </div>
-            )}
+              {rightTab === 'viewer' && (
+                <span className="text-xs text-gray-500 truncate max-w-[180px]">
+                  {selectedDrawing ? selectedDrawing.filename : 'No file selected'}
+                </span>
+              )}
+            </div>
           </div>
-        </div>
+          <div className="flex-1 min-h-0 overflow-auto p-3">
+            {rightTab === 'viewer' && (
+              selectedDrawing ? (
+                <DrawingViewer
+                  filePath={selectedDrawing.filePath}
+                  fileType={selectedDrawing.fileType}
+                  filename={selectedDrawing.filename}
+                />
+              ) : (
+                <div className="h-full min-h-[320px] flex items-center justify-center text-gray-400 text-sm border border-dashed border-gray-200 rounded-lg">
+                  Select a file from the left to preview
+                </div>
+              )
+            )}
+            {rightTab === 'ai' && (
+              <ProjectAssistant
+                projectId={projectId}
+                drawings={project.drawings}
+                onBillUpdated={fetchProject}
+              />
+            )}
+            {rightTab === 'rates' && <ProjectRates projectId={projectId} />}
+          </div>
+        </section>
       </div>
+      <style jsx>{`
+        .bill-scroll {
+          -ms-overflow-style: none; /* IE and Edge */
+          scrollbar-width: none; /* Firefox */
+        }
+        .bill-scroll::-webkit-scrollbar {
+          display: none; /* Chrome, Safari, Opera */
+        }
+      `}</style>
     </div>
   )
 }

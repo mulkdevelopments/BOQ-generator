@@ -491,10 +491,6 @@ export type ExtractedDataUncheckedUpdateManyWithoutDrawingNestedInput = {
   deleteMany?: Prisma.ExtractedDataScalarWhereInput | Prisma.ExtractedDataScalarWhereInput[]
 }
 
-export type NullableStringFieldUpdateOperationsInput = {
-  set?: string | null
-}
-
 export type NullableFloatFieldUpdateOperationsInput = {
   set?: number | null
   increment?: number

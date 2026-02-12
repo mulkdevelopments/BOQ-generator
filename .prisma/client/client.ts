@@ -54,3 +54,8 @@ export type Drawing = Prisma.DrawingModel
  * 
  */
 export type ExtractedData = Prisma.ExtractedDataModel
+/**
+ * Model MaterialRate
+ * 
+ */
+export type MaterialRate = Prisma.MaterialRateModel

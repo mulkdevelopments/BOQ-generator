@@ -1,6 +1,7 @@
 export type Confidence = 'confirmed' | 'estimated' | 'missing'
 
 export interface ExtractedMaterial {
+  id?: string // DB id when loaded from project (for saving edits)
   materialType?: string
   dimensions?: string
   quantity?: number

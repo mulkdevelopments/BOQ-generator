@@ -11,4 +11,5 @@
 export type * from './models/Project'
 export type * from './models/Drawing'
 export type * from './models/ExtractedData'
+export type * from './models/MaterialRate'
 export type * from './commonInputTypes'

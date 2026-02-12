@@ -386,7 +386,8 @@ type FieldRefInputType<Model, FieldType> = Model extends never ? never : FieldRe
 export const ModelName = {
   Project: 'Project',
   Drawing: 'Drawing',
-  ExtractedData: 'ExtractedData'
+  ExtractedData: 'ExtractedData',
+  MaterialRate: 'MaterialRate'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -402,7 +403,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "project" | "drawing" | "extractedData"
+    modelProps: "project" | "drawing" | "extractedData" | "materialRate"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -628,6 +629,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    MaterialRate: {
+      payload: Prisma.$MaterialRatePayload<ExtArgs>
+      fields: Prisma.MaterialRateFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.MaterialRateFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MaterialRatePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.MaterialRateFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MaterialRatePayload>
+        }
+        findFirst: {
+          args: Prisma.MaterialRateFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MaterialRatePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.MaterialRateFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MaterialRatePayload>
+        }
+        findMany: {
+          args: Prisma.MaterialRateFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MaterialRatePayload>[]
+        }
+        create: {
+          args: Prisma.MaterialRateCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MaterialRatePayload>
+        }
+        createMany: {
+          args: Prisma.MaterialRateCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.MaterialRateCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MaterialRatePayload>[]
+        }
+        delete: {
+          args: Prisma.MaterialRateDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MaterialRatePayload>
+        }
+        update: {
+          args: Prisma.MaterialRateUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MaterialRatePayload>
+        }
+        deleteMany: {
+          args: Prisma.MaterialRateDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.MaterialRateUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.MaterialRateUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MaterialRatePayload>[]
+        }
+        upsert: {
+          args: Prisma.MaterialRateUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MaterialRatePayload>
+        }
+        aggregate: {
+          args: Prisma.MaterialRateAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateMaterialRate>
+        }
+        groupBy: {
+          args: Prisma.MaterialRateGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.MaterialRateGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.MaterialRateCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.MaterialRateCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -670,6 +745,9 @@ export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof
 export const ProjectScalarFieldEnum = {
   id: 'id',
   name: 'name',
+  client: 'client',
+  consultant: 'consultant',
+  contractor: 'contractor',
   createdAt: 'createdAt'
 } as const
 
@@ -702,6 +780,19 @@ export const ExtractedDataScalarFieldEnum = {
 } as const
 
 export type ExtractedDataScalarFieldEnum = (typeof ExtractedDataScalarFieldEnum)[keyof typeof ExtractedDataScalarFieldEnum]
+
+
+export const MaterialRateScalarFieldEnum = {
+  id: 'id',
+  materialType: 'materialType',
+  unit: 'unit',
+  rate: 'rate',
+  currency: 'currency',
+  source: 'source',
+  updatedAt: 'updatedAt'
+} as const
+
+export type MaterialRateScalarFieldEnum = (typeof MaterialRateScalarFieldEnum)[keyof typeof MaterialRateScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -887,6 +978,7 @@ export type GlobalOmitConfig = {
   project?: Prisma.ProjectOmit
   drawing?: Prisma.DrawingOmit
   extractedData?: Prisma.ExtractedDataOmit
+  materialRate?: Prisma.MaterialRateOmit
 }
 
 /* Types for Logging */
